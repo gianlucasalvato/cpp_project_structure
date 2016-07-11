@@ -1,0 +1,122 @@
+#!/bin/bash
+
+. `dirname $0`/functions "$0"
+
+# if no arguments, exit (you may wanna change this)
+
+[[ $# == 0 ]] && print_usage && exit 0
+
+# cycle through the argument list
+
+base="$script_path/.."
+include_dir="$base/include"
+tree_dir="$base/tree"
+template_s="$tree_dir/project/source.t"
+
+while [[ $# > 0 ]]; do
+
+	option="$1"
+
+	case $option in
+		-y | --yes		) auto_reply="-y"					;;
+		-n | --no		) auto_reply="-n"					;;
+		-t | --template	) shift; template="$1"				;;
+		-d | --directory) shift; include_dir="$1"			;;
+		-v | --verbose	) shift; verbose_level=$1			;; 
+ 		-h | --help		) print_usage && exit 0				;;
+ 		-* 				) ERROR bad_option "$option"		;;
+		--				) shift; break						;;
+		*				) break;							;;
+	esac
+	shift
+
+done
+
+# post-parsing setup
+
+file_type=${1##*.}
+
+file_name="$include_dir/$1"
+file_path="${file_name%\/*}"
+
+template_s="$tree_dir/$template/source.t"
+template_file="$template_s.$file_type"
+overwrite="-y"
+
+
+[[ "$file_name" == "" ]] 	&& ERROR no_input
+[[ -d "$file_name" ]] 		&& ERROR is_a_directory "$file_name"
+[[ ! -f "$template_file" ]] && ERROR no_template "$template_file"
+
+if [ -f "$file_name" ]; then
+
+	if [ "$auto_reply" == "-n" ]; then
+		
+		cout "\nSkip existing \e[33m$file_name\e[m. "
+		exit $ECANCELED
+		
+	elif [ "$auto_reply" != "-y" ]; then
+	
+		vout 0 "\e[33m$file_path\e[m already exists!\n"
+		vout 0 "\e[31mContinue anyway?\e[m (anything but 'y' will stop me) "
+		read char && overwrite="-$char"
+	
+	fi
+
+fi
+
+# actual script
+
+if [[ $overwrite != "-y" ]]; then
+
+	cout "\e[31;1mCanceled.\e[m\n"
+	exit $ECANCELED
+
+else
+
+	errors=0
+	
+	. "$template_s"
+
+	mkdir -p "$file_path"
+	rm "$file_name"
+	touch "$file_name"
+		
+	cat "$template_file" > "$file_name"
+	
+	for pair in "${project[@]}"; do
+		key="${pair%%:*}"
+		value="${pair##*:}"
+		
+		
+		if [[ "$key" == "LICENSE" ]]; then
+			cout "\nSubstituting $key... "
+
+			CMD="sed -e s/@$key@/$value/g $file_name.tmp"
+			vout 2 "\e[33;1mexec:\e[m '$CMD' > $file_name\n"
+			LICENSE_TEXT="`sed -e 's/[\&/]/\\&/g' -e 's/$/\\\n/' $value | tr -d '\n'`"
+			perl -0777 -pe s/"\@$key\@"/"$LICENSE_TEXT"/igs -i "$file_name"
+			pass=$?
+			[ $pass ] && sed -i -e s/\&/\\//g "$file_name"
+			pass=$?
+			rm "$file_name-e"
+		else
+			cout "\nSubstituting key $key with $value... "
+			CMD="sed -e s/@$key@/$value/g $file_name"
+			vout 2 "\e[33;1mexec:\e[m '$CMD'\n"
+			sed -i -e s/"@$key@"/"$value"/g "$file_name"
+			pass=$?
+			rm "$file_name-e"
+		fi
+		
+		[[ pass != 0 ]] && cout "\e[32;1mdone" || { cout "\e[31;1mfail" && let errors++; }
+		cout "\e[m"
+		
+	done
+
+
+fi
+
+{ [[ $errors == 0 ]] || eout "\e[31;1m$errors translations failed!\e[m"; } && cout "\n"
+
+exit 0

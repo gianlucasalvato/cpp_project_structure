@@ -1,0 +1,78 @@
+#!/bin/bash
+
+. `dirname $0`/functions "$0"
+
+# cycle through the argument list
+
+while [[ $# > 0 ]]; do
+
+	option="$1"
+
+	case $option in
+		-y | --yes		) auto_reply="-y"					;;
+		-n | --no		) auto_reply="-n"					;;
+		-d | --directory) shift; options+="--directory $1 "	;;
+		-v | --verbose	) shift; verbose_level=$1			;; 
+ 		-h | --help		) print_usage && exit 0				;;
+		--				) shift; break						;;
+		*) ERROR bad_option $option							;;	
+	esac
+	shift
+
+done
+
+# post-parsing setup
+
+maker="$script_path/make_project_tree"
+
+lv_level=$verbose_level
+let "lv_level--"
+options+="--verbose $lv_level"
+
+# actual script functions
+
+# actual script
+
+if [ "$auto-reply" == "-y" ]; then
+
+	printf "Are you SURE you want to overwrite ALL the project tree? "
+	printf "Answer YES to continue, anything else to stop! "
+	read answer
+	
+	[[ $answer != "YES" ]] && printf "Ok, quit." && exit $ECANCELED
+	
+fi
+
+tree_dir="$script_path/../tree"
+trees="$tree_dir/*"
+
+errors=0
+
+for file_name in $trees; do
+
+	if [ "$file_name" != "" ]; then
+	
+		if [ -d "$file_name" ]; then 
+	
+			vout 2 "Skipping directory '$filename'.\n"
+		
+		else
+		
+			CMD="$maker $auto_reply $options"
+			cout "Processing tree in $file_name... "
+			vout 2 "\n\e[33;1mexec:\e[m '$CMD < $file_name'\n"
+			
+			$CMD < "$file_name"
+			
+			[[ $? == 0 ]] && vout 2 "\e[32;1mdone" || { vout 2 "\e[31;1mfail" && let errors++; }
+			cout "\e[m\n"
+			cout "Done processing tree in $file_name.\n"
+		fi
+	
+	fi
+
+done
+
+[[ $errors == 0 ]] || eout "\e[31;1m$errors tree failed!\e[m\n";
+
+exit 0

@@ -1,0 +1,4 @@
+!.gitignore
+!config.h.in
+!license.txt
+!project.cpp.in

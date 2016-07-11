@@ -1,0 +1,71 @@
+#!/bin/bash
+
+. `dirname $0`/functions "$0"
+
+# cycle through the argument list
+
+while [[ $# > 0 ]]; do
+
+	option="$1"
+
+	case $option in
+		-y | --yes		) auto_reply="-y"					;;
+		-n | --no		) auto_reply="-n"					;;
+		-d | --directory) shift; options+="--directory $1 "	;;
+		-v | --verbose	) shift; verbose_level=$1 			;; 
+ 		-h | --help		) print_usage && exit 0				;;
+ 		-* 				) ERROR bad_option "$option"		;;
+		--				) shift; break						;;
+		*				) break;							;;
+	esac
+	shift
+
+done
+
+# post-parsing setup
+
+maker="$script_path/add_file"
+
+lv_level=$verbose_level
+let "lv_level--"
+options+="--verbose $lv_level "
+
+# actual script functions
+
+# actual script
+
+template='project'
+
+errors=0
+
+while read line; do
+
+	if [ "$line" != "" ]; then
+	
+		cout "Processing '$line'... "
+	
+		if [ "${line:0:1}" == "@" ]; then  
+			
+			template="${line:1}"
+			cout "\e[33;1mSelecting template:\e[m $template.\n" 
+			options+="--template $template "
+	
+		else
+		
+			CMD="$maker $auto_reply $options $line"
+			vout 2 "\n\e[33;1mexec:\e[m '$CMD'"
+			
+			$CMD
+			
+			[[ $? == 0 ]] && cout "\e[32;1mdone" || { cout "\e[31;1mfail" && let errors++; }
+			cout "\e[m\n"
+
+		fi
+		
+	fi
+
+done
+
+{ [[ $errors == 0 ]] || eout "\e[31;1m$errors translations failed!\e[m"; } && cout "\n"
+
+exit 0

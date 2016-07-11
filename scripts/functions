@@ -1,0 +1,67 @@
+#!/bin/bash
+
+ERRCODE=0 # success
+
+ENOENT=2 	# no such file or directory
+EEXIST=17	# file exists
+EISDIR=21	# is a directory
+EINVAL=22 	# invalid argument
+ECANCELED=125 # job canceled
+
+[[ ! -x "$1" ]] && echo "No input script" && exit $ENOENT
+
+# basic script info and flags
+
+verbose_level=1
+
+script_alias="$1"
+script_name="`basename $1`"
+script_path="`dirname $1`"
+
+# basic script functions and error handling
+
+print_usage() {
+	local MANPAGE="$1.1"	
+	man $MANPAGE
+}
+
+vout() {
+	local level=$1 && shift
+	[[ $verbose_level > $level ]] && printf "$@"
+}
+
+cout() { vout 1 "$@"; }
+eout() { vout -1 "$@"; }
+
+ERR_bad_option() {
+	eout "option '$1' is not allowed."
+	ERRCODE=$EINVAL
+}
+
+ERR_no_input() {
+	eout "no input file."
+	ERRCODE=$EINVAL	
+}
+
+ERR_no_template() {
+	eout "no such template file: '$1'"
+	ERRCODE=$EINVAL	
+}
+
+ERR_file_exists() {
+	eout "file '$1' already exists."
+	ERRCODE=$EEXIST
+}
+
+ERR_is_a_directory() {
+	eout "'$1' is a directory."
+	ERRCODE=$EISDIR
+}
+
+ERROR() {
+	[[ $verbose_level > -1 ]] && exec 1>&2 || exec 1>/dev/null
+	eout "ERROR: " && ERR_$1 $2 && eout "\n"
+	cout "Use '--help' to see the man page.\n"
+	exit $ERRCODE
+}
+
