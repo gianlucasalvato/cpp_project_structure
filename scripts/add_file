@@ -9,7 +9,7 @@
 # cycle through the argument list
 
 base="$script_path/.."
-include_dir="$base/include"
+include_dir="$base/src"
 tree_dir="$base/tree"
 template_s="$tree_dir/project/source.t"
 
@@ -90,7 +90,7 @@ else
 	[[ ! -f "$template_file" ]] && ERROR no_template "$template_file"	
 
 	mkdir -p "$file_path"
-	rm "$file_name"
+	[ -f "$file_name" ] && rm "$file_name"
 	touch "$file_name"
 		
 	cat "$template_file" > "$file_name"

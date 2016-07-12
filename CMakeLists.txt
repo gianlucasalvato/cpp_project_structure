@@ -36,7 +36,8 @@ if (NOT EXISTS "${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
-include_directories("${PROJECT_SOURCE_DIR}/lib")
+include_directories("${PROJECT_SOURCE_DIR}/src")
+
 include_directories("${PROJECT_BINARY_DIR}")
 
 
