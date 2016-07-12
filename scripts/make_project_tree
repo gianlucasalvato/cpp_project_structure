@@ -26,7 +26,7 @@ done
 
 maker="$script_path/add_file"
 
-lv_level=$verbose_level
+lv_level="$verbose_level"
 let "lv_level--"
 options+="--verbose $lv_level "
 
@@ -38,34 +38,44 @@ template='project'
 
 errors=0
 
-while read line; do
+tree_file="$1"
+
+exec 7<&0
+
+while IFS='' read -r line; do
 
 	if [ "$line" != "" ]; then
+
+		[ "${line:0:1}" == "#" ] && continue
 	
-		cout "Processing '$line'... "
-	
+		cout "\nProcessing '$line'... "
+
 		if [ "${line:0:1}" == "@" ]; then  
 			
 			template="${line:1}"
-			cout "\e[33;1mSelecting template:\e[m $template.\n" 
+			vout 2 "\e[34;3m\nSelecting template structure:\e[m $template." 
+			options="${options//--template*/}"
 			options+="--template $template "
-	
+
 		else
 		
-			CMD="$maker $auto_reply $options $line"
-			vout 2 "\n\e[33;1mexec:\e[m '$CMD'"
+			CMD="$maker $auto_reply $options"
+			vout 2 "\n\e[33;1mexec:\e[m '$CMD $line'... "
 			
-			$CMD
+			$CMD "$line" <&7
 			
-			[[ $? == 0 ]] && cout "\e[32;1mdone" || { cout "\e[31;1mfail" && let errors++; }
-			cout "\e[m\n"
+			[[ $? == 0 ]] && vout 2 "\e[32;1mdone" || { vout 2 "\e[31;1mfail" && let errors++; }
 
 		fi
 		
+		cout "\e[m"
+
 	fi
 
-done
+done < "$tree_file"
 
-{ [[ $errors == 0 ]] || eout "\e[31;1m$errors translations failed!\e[m"; } && cout "\n"
+
+
+{ [[ $errors == 0 ]] || eout "\e[31;1m\n$errors translations failed!\e[m"; } && cout "\n"
 
 exit 0

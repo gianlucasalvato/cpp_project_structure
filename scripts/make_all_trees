@@ -44,7 +44,7 @@ if [ "$auto-reply" == "-y" ]; then
 fi
 
 tree_dir="$script_path/../tree"
-trees="$tree_dir/*"
+trees="$tree_dir/*.tree"
 
 errors=0
 
@@ -60,9 +60,9 @@ for file_name in $trees; do
 		
 			CMD="$maker $auto_reply $options"
 			cout "Processing tree in $file_name... "
-			vout 2 "\n\e[33;1mexec:\e[m '$CMD < $file_name'\n"
+			vout 2 "\n\e[33;1mexec:\e[m '$CMD < $file_name'... "
 			
-			$CMD < "$file_name"
+			$CMD "$file_name"
 			
 			[[ $? == 0 ]] && vout 2 "\e[32;1mdone" || { vout 2 "\e[31;1mfail" && let errors++; }
 			cout "\e[m\n"

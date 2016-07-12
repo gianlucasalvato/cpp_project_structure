@@ -21,13 +21,21 @@
 
 namespace @NAMESPACE@ {
 	
-	namespace @FILE_NAME_C@ {
+namespace model {
+	
+	namespace detail {
+		
+		namespace @FILE_NAME_C@ {
+			
+			
+			
+		} // namespace @FILE_NAME_C@
 		
 		
 		
-		
-		
-	} // namespace @FILE_NAME_C@
+	} // namespace detail
+	
+} // namespace strategy
 	
 } // namespace @NAMESPACE@
 

@@ -31,7 +31,7 @@ vout() {
 }
 
 cout() { vout 1 "$@"; }
-eout() { vout -1 "$@"; }
+eout() { vout -10 "$@"; }
 
 ERR_bad_option() {
 	eout "option '$1' is not allowed."

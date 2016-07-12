@@ -39,27 +39,28 @@ file_type=${1##*.}
 file_name="$include_dir/$1"
 file_path="${file_name%\/*}"
 
-template_s="$tree_dir/$template/source.t"
-template_file="$template_s.$file_type"
+
 overwrite="-y"
 
 
 [[ "$file_name" == "" ]] 	&& ERROR no_input
 [[ -d "$file_name" ]] 		&& ERROR is_a_directory "$file_name"
-[[ ! -f "$template_file" ]] && ERROR no_template "$template_file"
 
 if [ -f "$file_name" ]; then
 
 	if [ "$auto_reply" == "-n" ]; then
 		
 		cout "\nSkip existing \e[33m$file_name\e[m. "
-		exit $ECANCELED
+		exit 0
 		
 	elif [ "$auto_reply" != "-y" ]; then
 	
-		vout 0 "\e[33m$file_path\e[m already exists!\n"
-		vout 0 "\e[31mContinue anyway?\e[m (anything but 'y' will stop me) "
-		read char && overwrite="-$char"
+		eout "\e[33m\n$file_name\e[m already exists! "
+		eout "\e[33mContinue anyway?\e[m\n"
+		eout "(anything but 'y' will stop me) "
+		read char
+		overwrite="-$char"
+		eout "\n" 
 	
 	fi
 
@@ -67,16 +68,26 @@ fi
 
 # actual script
 
-if [[ $overwrite != "-y" ]]; then
+if [ "$overwrite" != "-y" ]; then
 
 	cout "\e[31;1mCanceled.\e[m\n"
-	exit $ECANCELED
+	exit 0
 
 else
 
 	errors=0
-	
-	. "$template_s"
+
+	templates="${template//\// }"
+	for template_d in $templates; do 
+		if [ -f "$tree_dir/$template_d.t" ]; then 
+			. "$tree_dir/$template_d.t"
+			vout 2 "\n\e[34;3mSourcing template:\e[m $template_d"
+		fi
+	done
+
+	template_file="$tree_dir/$template_d.t.$file_type"
+
+	[[ ! -f "$template_file" ]] && ERROR no_template "$template_file"	
 
 	mkdir -p "$file_path"
 	rm "$file_name"
@@ -84,39 +95,58 @@ else
 		
 	cat "$template_file" > "$file_name"
 	
+	
+
 	for pair in "${project[@]}"; do
 		key="${pair%%:*}"
 		value="${pair##*:}"
 		
-		
-		if [[ "$key" == "LICENSE" ]]; then
-			cout "\nSubstituting $key... "
+		vout 2 "\nSubstituting key "
 
-			CMD="sed -e s/@$key@/$value/g $file_name.tmp"
-			vout 2 "\e[33;1mexec:\e[m '$CMD' > $file_name\n"
+		if [[ "$key" == "LICENSE" ]]; then
+			vout 2 "$key... "
+
+			CMD="perl -0777 -pe s/\"\@$key\@\"/\"$LICENSE_TEXT\"/igs -i \"$file_name\""
+			vout 3 "\e[33;1m\nexec:\e[m '$CMD'... "
 			LICENSE_TEXT="`sed -e 's/[\&/]/\\&/g' -e 's/$/\\\n/' $value | tr -d '\n'`"
+			
 			perl -0777 -pe s/"\@$key\@"/"$LICENSE_TEXT"/igs -i "$file_name"
 			pass=$?
-			[ $pass ] && sed -i -e s/\&/\\//g "$file_name"
+			
+			if [ $pass != 0 ]; then
+				vout 3 "\e[31;1mFAILED\e[m"
+				let errors++
+				continue; 
+			fi
+			
+			vout 3 "\e[32;1mdone" 
+			CMD="sed -i -e s/\&/\\//g \"$file_name\""
+			
+			vout 3 "\e[33;1m\nexec:\e[m '$CMD'... "
+			sed -i -e s/\&/\\//g "$file_name"
 			pass=$?
 			rm "$file_name-e"
+
 		else
-			cout "\nSubstituting key $key with $value... "
-			CMD="sed -e s/@$key@/$value/g $file_name"
-			vout 2 "\e[33;1mexec:\e[m '$CMD'\n"
+			vout 2 "$key with '$value'... "
+			CMD="sed -i -e s/\"@$key@\"/\"$value\"/g \"$file_name\""
+			
+			vout 3 "\e[33;1m\nexec:\e[m '$CMD'... "
 			sed -i -e s/"@$key@"/"$value"/g "$file_name"
 			pass=$?
 			rm "$file_name-e"
 		fi
-		
-		[[ pass != 0 ]] && cout "\e[32;1mdone" || { cout "\e[31;1mfail" && let errors++; }
+
+		[ $pass == 0 ] && vout 3 "\e[32;1mdone" || { vout 3 "\e[31;1mFAILED" && let errors++; }
+
 		cout "\e[m"
 		
 	done
 
+	vout 3 "\n"
 
 fi
 
-{ [[ $errors == 0 ]] || eout "\e[31;1m$errors translations failed!\e[m"; } && cout "\n"
+{ [[ $errors == 0 ]] || eout "\e[31;1m\n$errors translations failed!\e[m"; }
 
 exit 0
